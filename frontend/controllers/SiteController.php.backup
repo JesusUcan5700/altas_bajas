@@ -1,0 +1,680 @@
+<?php
+namespace frontend\controllers;
+
+use frontend\models\ResendVerificationEmailForm;
+use frontend\models\VerifyEmailForm;
+use frontend\models\Nobreak;
+use frontend\models\Equipo;
+use frontend\models\Impresora;
+use frontend\models\VideoVigilancia;
+use frontend\models\Conectividad;
+use frontend\models\Telefonia;
+use frontend\models\Procesador;
+use frontend\models\Almacenamiento;
+use frontend\models\Ram;
+use frontend\models\Sonido;
+use frontend\models\Monitor;
+use frontend\models\Microfono;
+use frontend\models\Bateria;
+use frontend\models\Adaptador;
+use Yii;
+use yii\base\InvalidArgumentException;
+use yii\web\BadRequestHttpException;
+use yii\web\Controller;
+use yii\filters\VerbFilter;
+use yii\filters\AccessControl;
+use common\models\LoginForm;
+use frontend\models\PasswordResetRequestForm;
+use frontend\models\ResetPasswordForm;
+use frontend\models\SignupForm;
+use frontend\models\ContactForm;
+
+/**
+ * Site controller
+ */
+class SiteController extends Controller
+{
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::class,
+                'only' => ['logout', 'signup'],
+                'rules' => [
+                    [
+                        'actions' => ['signup'],
+                        'allow' => true,
+                        'roles' => ['?'],
+                    ],
+                    [
+                        'actions' => ['logout'],
+                        'allow' => true,
+                        'roles' => ['@'],
+                    ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'logout' => ['post'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function actions()
+    {
+        return [
+            'error' => [
+                'class' => \yii\web\ErrorAction::class,
+            ],
+            'captcha' => [
+                'class' => \yii\captcha\CaptchaAction::class,
+                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
+            ],
+        ];
+    }
+
+    /**
+     * Displays homepage.
+     *
+     * @return mixed
+     */
+    public function actionIndex()
+    {
+        return $this->render('index');
+    }
+
+    /**
+     * Logs in a user.
+     *
+     * @return mixed
+     */
+    public function actionLogin()
+    {
+        if (!Yii::$app->user->isGuest) {
+            return $this->goHome();
+        }
+
+        $model = new LoginForm();
+        if ($model->load(Yii::$app->request->post()) && $model->login()) {
+            return $this->goBack();
+        }
+
+        $model->password = '';
+
+        return $this->render('login', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Logs out the current user.
+     *
+     * @return mixed
+     */
+    public function actionLogout()
+    {
+        Yii::$app->user->logout();
+
+        return $this->goHome();
+    }
+
+    /**
+     * Displays contact page.
+     *
+     * @return mixed
+     */
+    public function actionContact()
+    {
+        $model = new ContactForm();
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            if ($model->sendEmail(Yii::$app->params['adminEmail'])) {
+                Yii::$app->session->setFlash('success', 'Thank you for contacting us. We will respond to you as soon as possible.');
+            } else {
+                Yii::$app->session->setFlash('error', 'There was an error sending your message.');
+            }
+
+            return $this->refresh();
+        }
+
+        return $this->render('contact', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Displays about page.
+     *
+     * @return mixed
+     */
+    public function actionAbout()
+    {
+        return $this->render('about');
+    }
+
+    /**
+     * Signs user up.
+     *
+     * @return mixed
+     */
+    public function actionSignup()
+    {
+        $model = new SignupForm();
+        if ($model->load(Yii::$app->request->post()) && $model->signup()) {
+            Yii::$app->session->setFlash('success', 'Thank you for registration. Please check your inbox for verification email.');
+            return $this->goHome();
+        }
+
+        return $this->render('signup', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Requests password reset.
+     *
+     * @return mixed
+     */
+    public function actionRequestPasswordReset()
+    {
+        $model = new PasswordResetRequestForm();
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            if ($model->sendEmail()) {
+                Yii::$app->session->setFlash('success', 'Check your email for further instructions.');
+
+                return $this->goHome();
+            }
+
+            Yii::$app->session->setFlash('error', 'Sorry, we are unable to reset password for the provided email address.');
+        }
+
+        return $this->render('requestPasswordResetToken', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Resets password.
+     *
+     * @param string $token
+     * @return mixed
+     * @throws BadRequestHttpException
+     */
+    public function actionResetPassword($token)
+    {
+        try {
+            $model = new ResetPasswordForm($token);
+        } catch (InvalidArgumentException $e) {
+            throw new BadRequestHttpException($e->getMessage());
+        }
+
+        if ($model->load(Yii::$app->request->post()) && $model->validate() && $model->resetPassword()) {
+            Yii::$app->session->setFlash('success', 'New password saved.');
+
+            return $this->goHome();
+        }
+
+        return $this->render('resetPassword', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar un equipo de cómputo en frontend
+     */
+    public function actionComputo()
+    {
+        $model = new Equipo();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Equipo guardado correctamente.');
+            return $this->redirect(['computo']);
+        }
+
+        return $this->render('computo', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar una impresora
+     */
+    public function actionImpresora()
+    {
+        $model = new Impresora();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Impresora guardada correctamente.');
+            return $this->redirect(['impresora']);
+        }
+
+        return $this->render('impresora', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar una cámara de video vigilancia
+     */
+    public function actionCamaras()
+    {
+        $model = new VideoVigilancia();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Cámara de video vigilancia guardada correctamente.');
+            return $this->redirect(['camaras']);
+        }
+
+        return $this->render('camaras', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar un equipo de conectividad
+     */
+    public function actionConectividad()
+    {
+        $model = new Conectividad();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Equipo de conectividad guardado correctamente.');
+            return $this->redirect(['conectividad']);
+        }
+
+        return $this->render('conectividad', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar un equipo de telefonía
+     */
+    public function actionTelefonia()
+    {
+        $model = new Telefonia();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Equipo de telefonía guardado correctamente.');
+            return $this->redirect(['telefonia']);
+        }
+
+        return $this->render('telefonia', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar un procesador
+     */
+    public function actionProcesadores()
+    {
+        $model = new Procesador();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Procesador guardado correctamente.');
+            return $this->redirect(['procesadores']);
+        }
+
+        return $this->render('procesadores', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar un dispositivo de almacenamiento
+     */
+    public function actionDispositivosDeAlmacenamiento()
+    {
+        $model = new Almacenamiento();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Dispositivo de almacenamiento guardado correctamente.');
+            return $this->redirect(['dispositivos-de-almacenamiento']);
+        }
+
+        return $this->render('dispositivos-de-almacenamiento', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar memoria RAM
+     */
+    public function actionMemoriaRam()
+    {
+        $model = new Ram();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Memoria RAM guardada correctamente.');
+            return $this->redirect(['memoria-ram']);
+        }
+
+        return $this->render('memoria-ram', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar equipo de sonido
+     */
+    public function actionEquipoDeSonido()
+    {
+        $model = new Sonido();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Equipo de sonido guardado correctamente.');
+            return $this->redirect(['equipo-de-sonido']);
+        }
+
+        return $this->render('equipo-de-sonido', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar monitores
+     */
+    public function actionMonitores()
+    {
+        $model = new Monitor();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Monitor guardado correctamente.');
+            return $this->redirect(['monitores']);
+        }
+
+        return $this->render('monitores', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar micrófonos
+     */
+    public function actionMicrofonos()
+    {
+        $model = new Microfono();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Micrófono guardado correctamente.');
+            return $this->redirect(['microfonos']);
+        }
+
+        return $this->render('microfonos', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar baterías
+     */
+    public function actionBaterias()
+    {
+        $model = new Bateria();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Batería guardada correctamente.');
+            return $this->redirect(['baterias']);
+        }
+
+        return $this->render('baterias', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Acción para agregar adaptadores
+     */
+    public function actionAdaptadores()
+    {
+        $model = new Adaptador();
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Adaptador guardado correctamente.');
+            return $this->redirect(['adaptadores']);
+        }
+
+        return $this->render('adaptadores', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Verify email address
+     *
+     * @param string $token
+     * @throws BadRequestHttpException
+     * @return yii\web\Response
+     */
+    public function actionVerifyEmail($token)
+    {
+        try {
+            $model = new VerifyEmailForm($token);
+        } catch (InvalidArgumentException $e) {
+            throw new BadRequestHttpException($e->getMessage());
+        }
+        if ($model->verifyEmail()) {
+            Yii::$app->session->setFlash('success', 'Your email has been confirmed!');
+            return $this->goHome();
+        }
+
+        Yii::$app->session->setFlash('error', 'Sorry, we are unable to verify your account with provided token.');
+        return $this->goHome();
+    }
+
+    /**
+     * Resend verification email
+     *
+     * @return mixed
+     */
+    public function actionResendVerificationEmail()
+    {
+        $model = new ResendVerificationEmailForm();
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            if ($model->sendEmail()) {
+                Yii::$app->session->setFlash('success', 'Check your email for further instructions.');
+                return $this->goHome();
+            }
+            Yii::$app->session->setFlash('error', 'Sorry, we are unable to resend verification email for the provided email address.');
+        }
+
+        return $this->render('resendVerificationEmail', [
+            'model' => $model
+        ]);
+    }
+
+    /**
+     * Displays and handles No Break form.
+     *
+     * @return mixed
+     */
+    public function actionNoBreak()
+    {
+        $model = new Nobreak();
+        
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            if ($model->save()) {
+                Yii::$app->session->setFlash('success', '¡Éxito! El No Break ha sido registrado correctamente en la base de datos.');
+                return $this->refresh(); // Refresca la página para limpiar el formulario
+            } else {
+                Yii::$app->session->setFlash('error', 'Hubo un error al guardar el No Break. Por favor, inténtelo de nuevo.');
+            }
+        }
+
+        // Si hay errores de validación, se mostrarán automáticamente en la vista
+        return $this->render('no-break', [
+            'model' => $model,
+        ]);
+    }
+
+    public function actionAgregarNuevo()
+    {
+        return $this->render('agregar_nuevo');
+    }
+
+    public function actionEditar()
+    {
+        // Debug: Log de entrada
+        file_put_contents('debug.log', date('Y-m-d H:i:s') . " - actionEditar called\n", FILE_APPEND);
+        
+        // Manejar solicitudes AJAX
+        if (Yii::$app->request->isPost && Yii::$app->request->post('action')) {
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - AJAX request detected\n", FILE_APPEND);
+            Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+            
+            $action = Yii::$app->request->post('action');
+            
+            if ($action === 'cargar_equipos') {
+                file_put_contents('debug.log', date('Y-m-d H:i:s') . " - cargar_equipos action\n", FILE_APPEND);
+                $categoria = Yii::$app->request->post('categoria');
+                file_put_contents('debug.log', date('Y-m-d H:i:s') . " - categoria: $categoria\n", FILE_APPEND);
+                $resultado = $this->cargarEquiposPorCategoria($categoria);
+                file_put_contents('debug.log', date('Y-m-d H:i:s') . " - resultado: " . json_encode($resultado) . "\n", FILE_APPEND);
+                return $resultado;
+            }
+            
+            if ($action === 'guardar_cambios') {
+                return $this->guardarCambiosEquipo(Yii::$app->request->post());
+            }
+        }
+
+        return $this->render('editar');
+    }
+
+    public function actionVerEquipos()
+    {
+        return $this->render('ver-equipos');
+    }
+
+    private function cargarEquiposPorCategoria($categoria)
+    {
+        // Log de inicio para debug
+        file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Iniciando cargarEquiposPorCategoria con categoria: " . $categoria . "\n", FILE_APPEND);
+        
+        // Solo manejar nobreak por ahora
+        if ($categoria !== 'nobreak') {
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Categoria no es nobreak, retornando array vacío\n", FILE_APPEND);
+            return [];
+        }
+        
+        try {
+            // Usar el modelo Nobreak para cargar los datos
+            $equipos = Nobreak::find()->orderBy('idNOBREAK ASC')->all();
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Equipos encontrados: " . count($equipos) . "\n", FILE_APPEND);
+            
+            $resultado = [];
+            foreach ($equipos as $equipo) {
+                $resultado[] = [
+                    'id' => $equipo->idNOBREAK,
+                    'marca' => $equipo->MARCA ?? 'N/A',
+                    'modelo' => $equipo->MODELO ?? 'N/A',
+                    'numero_serie' => $equipo->NUMERO_SERIE ?? 'N/A',
+                    'estado' => ucfirst(strtolower($equipo->Estado ?? 'N/A')),
+                    'ubicacion' => $equipo->ubicacion_edificio ?? 'Sin ubicación',
+                    'data' => $equipo->attributes // Todos los datos para el modal
+                ];
+            }
+            
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Resultado final: " . json_encode($resultado) . "\n", FILE_APPEND);
+            return $resultado;
+            
+    private function cargarEquiposPorCategoria($categoria)
+    {
+        // Log de inicio para debug
+        file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Iniciando cargarEquiposPorCategoria con categoria: " . $categoria . "\n", FILE_APPEND);
+        
+        // Solo manejar nobreak por ahora
+        if ($categoria !== 'nobreak') {
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Categoria no es nobreak, retornando array vacío\n", FILE_APPEND);
+            return [];
+        }
+        
+        try {
+            // Usar el modelo Nobreak para cargar los datos
+            $equipos = Nobreak::find()->orderBy('idNOBREAK ASC')->all();
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Equipos encontrados: " . count($equipos) . "\n", FILE_APPEND);
+            
+            $resultado = [];
+            foreach ($equipos as $equipo) {
+                $resultado[] = [
+                    'id' => $equipo->idNOBREAK,
+                    'marca' => $equipo->MARCA ?? 'N/A',
+                    'modelo' => $equipo->MODELO ?? 'N/A',
+                    'numero_serie' => $equipo->NUMERO_SERIE ?? 'N/A',
+                    'estado' => ucfirst(strtolower($equipo->Estado ?? 'N/A')),
+                    'ubicacion' => $equipo->ubicacion_edificio ?? 'Sin ubicación',
+                    'data' => $equipo->attributes // Todos los datos para el modal
+                ];
+            }
+            
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Resultado final: " . json_encode($resultado) . "\n", FILE_APPEND);
+            return $resultado;
+            
+        } catch (Exception $e) {
+            // Log del error para debug
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Error cargando equipos: " . $e->getMessage() . "\n", FILE_APPEND);
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . " - Exception completa: " . $e->getTraceAsString() . "\n", FILE_APPEND);
+            return [];
+        }
+    }
+
+    private function guardarCambiosEquipo($data)
+    {
+        $categoria = $data['categoria'];
+        $id = $data['equipo_id'];
+        
+        // Solo manejar nobreak por ahora
+        if ($categoria !== 'nobreak') {
+            return ['success' => false, 'message' => 'Categoría no implementada'];
+        }
+        
+        try {
+            // Verificar que el equipo existe
+            $sql = "SELECT COUNT(*) FROM nobreak WHERE idNOBREAK = :id";
+            $count = Yii::$app->db->createCommand($sql, [':id' => $id])->queryScalar();
+            
+            if ($count == 0) {
+                return ['success' => false, 'message' => 'Equipo no encontrado'];
+            }
+            
+            // Preparar los campos a actualizar (solo los que están en la tabla)
+            $camposPermitidos = ['MARCA', 'MODELO', 'CAPACIDAD', 'NUMERO_SERIE', 'NUMERO_INVENTARIO', 'DESCRIPCION', 'Estado', 'fecha', 'ubicacion_edificio', 'ubicacion_detalle'];
+            $updates = [];
+            $params = [':id' => $id];
+            
+            foreach ($data as $key => $value) {
+                if (in_array($key, $camposPermitidos)) {
+                    $updates[] = "`$key` = :$key";
+                    $params[":$key"] = $value;
+                }
+            }
+            
+            if (empty($updates)) {
+                return ['success' => false, 'message' => 'No hay campos válidos para actualizar'];
+            }
+            
+            // Ejecutar la actualización
+            $sql = "UPDATE nobreak SET " . implode(', ', $updates) . " WHERE idNOBREAK = :id";
+            $command = Yii::$app->db->createCommand($sql, $params);
+            $rowsAffected = $command->execute();
+            
+            if ($rowsAffected > 0) {
+                return ['success' => true, 'message' => 'Cambios guardados correctamente'];
+            } else {
+                return ['success' => false, 'message' => 'No se realizaron cambios'];
+            }
+            
+        } catch (Exception $e) {
+            Yii::error("Error guardando equipo: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al guardar: ' . $e->getMessage()];
+        }
+    }
+}

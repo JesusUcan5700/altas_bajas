@@ -1,0 +1,17 @@
+✅ CAMBIO REALIZADO EXITOSAMENTE
+
+🎯 Actualización en gestion_categorias.php:
+   - Comentario HTML: "<!-- Video Vigilancia -->"
+   - Título de la card: "Video Vigilancia" 
+   - Descripción: "Administra equipos de video vigilancia"
+
+📍 Ubicación: 
+   http://localhost/altas_bajas/frontend/web/index.php?r=site%2Fgestion-categorias
+
+🔗 Los cambios son consistentes con:
+   ✅ Vista de listado: "Lista de Equipos de Video Vigilancia"
+   ✅ Vista de edición: "Editar Equipo de Video Vigilancia" 
+   ✅ Modelo con tipos de cámara específicos
+   ✅ Sistema de auditoría completo
+
+🎉 ¡Ahora toda la interfaz muestra "Video Vigilancia" en lugar de "Cámaras"!

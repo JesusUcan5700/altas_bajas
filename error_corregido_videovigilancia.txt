@@ -1,0 +1,32 @@
+🔧 ERROR CORREGIDO EXITOSAMENTE
+================================
+
+❌ PROBLEMA IDENTIFICADO:
+   - Error SQL: "Column not found: 1054 Unknown column 'idVIDEOVIGILANCIA'"
+   - En archivo: frontend/controllers/SiteController.php
+   - Método: actionVideovigilanciaListar()
+
+🔍 CAUSA DEL ERROR:
+   - El controlador usaba: idVIDEOVIGILANCIA (sin guiones bajos)
+   - El campo real es: idVIDEO_VIGILANCIA (con guiones bajos)
+
+✅ SOLUCIÓN APLICADA:
+   - Corregido el ORDER BY de:
+     'idVIDEOVIGILANCIA ASC' 
+   - A:
+     'idVIDEO_VIGILANCIA ASC'
+
+🧪 VERIFICACIÓN:
+   ✅ Consulta funciona correctamente
+   ✅ Se encuentran 3 registros de video vigilancia
+   ✅ Datos de auditoría funcionando
+   ✅ Tipos de cámara operativos
+
+🎯 RESULTADO:
+   La vista http://localhost/altas_bajas/frontend/web/index.php?r=site%2Fvideovigilancia-listar
+   ahora debería cargar sin errores y mostrar la lista completa con:
+   - Columnas de auditoría (Tiempo Activo, Último Editor)
+   - Columna de Tipo de Cámara
+   - Todas las funcionalidades implementadas
+
+🎉 ¡ERROR RESUELTO COMPLETAMENTE!

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Exportación</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-test-tube me-2"></i>Prueba de Funcionalidad de Exportación</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Esta página prueba las funciones de exportación del sistema de stock.</p>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <button class="btn btn-success w-100 mb-3" onclick="testExportarExcel()">
+                                    <i class="fas fa-file-excel me-2"></i>Probar Excel
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-info w-100 mb-3" onclick="testExportarJSON()">
+                                    <i class="fas fa-file-code me-2"></i>Probar JSON
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-secondary w-100 mb-3" onclick="testImprimir()">
+                                    <i class="fas fa-print me-2"></i>Probar Imprimir
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle me-2"></i>Estado de las pruebas:</h6>
+                            <ul id="resultados">
+                                <li>Esperando pruebas...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos de prueba
+        const stockData = {
+            nobreak: {
+                nombre: 'No Break / UPS',
+                icono: 'fas fa-battery-half',
+                color: 'warning',
+                total: 4,
+                activos: 2,
+                disponibles: 1,
+                mantenimiento: 0,
+                danados: 1
+            },
+            equipo: {
+                nombre: 'Equipos de Cómputo',
+                icono: 'fas fa-desktop',
+                color: 'primary',
+                total: 4,
+                activos: 2,
+                disponibles: 1,
+                mantenimiento: 0,
+                danados: 1
+            },
+            impresora: {
+                nombre: 'Impresoras',
+                icono: 'fas fa-print',
+                color: 'info',
+                total: 3,
+                activos: 0,
+                disponibles: 1,
+                mantenimiento: 1,
+                danados: 1
+            }
+        };
+
+        function agregarResultado(mensaje, tipo = 'success') {
+            const lista = document.getElementById('resultados');
+            if (lista.children[0].textContent === 'Esperando pruebas...') {
+                lista.innerHTML = '';
+            }
+            
+            const li = document.createElement('li');
+            li.className = tipo === 'success' ? 'text-success' : 'text-danger';
+            li.innerHTML = `<i class="fas fa-${tipo === 'success' ? 'check' : 'times'} me-2"></i>${mensaje}`;
+            lista.appendChild(li);
+        }
+
+        function testExportarExcel() {
+            try {
+                exportarExcel();
+                agregarResultado('✅ Función Excel ejecutada correctamente');
+            } catch (error) {
+                agregarResultado('❌ Error en función Excel: ' + error.message, 'error');
+            }
+        }
+
+        function testExportarJSON() {
+            try {
+                exportarJSON();
+                agregarResultado('✅ Función JSON ejecutada correctamente');
+            } catch (error) {
+                agregarResultado('❌ Error en función JSON: ' + error.message, 'error');
+            }
+        }
+
+        function testImprimir() {
+            try {
+                imprimirReporte();
+                agregarResultado('✅ Función Imprimir ejecutada correctamente');
+            } catch (error) {
+                agregarResultado('❌ Error en función Imprimir: ' + error.message, 'error');
+            }
+        }
+
+        // Copiar las funciones del archivo stock.php
+        function exportarExcel() {
+            try {
+                const datos = [];
+                const fecha = new Date().toLocaleDateString('es-ES');
+                const hora = new Date().toLocaleTimeString('es-ES');
+                
+                datos.push(['REPORTE DE STOCK POR CATEGORÍA']);
+                datos.push(['Fecha de generación:', fecha + ' ' + hora]);
+                datos.push(['Sistema de Inventario - Control de Equipos']);
+                datos.push([]);
+                
+                let totalGeneral = 0;
+                let activosGeneral = 0;
+                let disponiblesGeneral = 0;
+                let mantenimientoGeneral = 0;
+                let danadosGeneral = 0;
+                
+                Object.keys(stockData).forEach(key => {
+                    const data = stockData[key];
+                    totalGeneral += data.total;
+                    activosGeneral += data.activos;
+                    disponiblesGeneral += data.disponibles;
+                    mantenimientoGeneral += data.mantenimiento;
+                    danadosGeneral += data.danados;
+                });
+                
+                datos.push(['=== RESUMEN GENERAL ===']);
+                datos.push(['Total de Equipos:', totalGeneral]);
+                datos.push(['En Uso (Activos):', activosGeneral]);
+                datos.push(['Disponibles:', disponiblesGeneral]);
+                datos.push([]);
+                
+                datos.push(['=== DETALLE POR CATEGORÍA ===']);
+                datos.push(['Categoría', 'Total', 'En Uso', 'Disponibles', 'Mantenimiento', 'Dañados/Baja']);
+                
+                Object.keys(stockData).forEach(key => {
+                    const data = stockData[key];
+                    datos.push([
+                        data.nombre,
+                        data.total,
+                        data.activos,
+                        data.disponibles,
+                        data.mantenimiento,
+                        data.danados
+                    ]);
+                });
+                
+                const csvContent = datos.map(row => 
+                    row.map(cell => {
+                        const cellStr = String(cell || '');
+                        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+                            return '"' + cellStr.replace(/"/g, '""') + '"';
+                        }
+                        return cellStr;
+                    }).join(',')
+                ).join('\n');
+                
+                const BOM = '\uFEFF';
+                const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                
+                const url = URL.createObjectURL(blob);
+                const nombreArchivo = 'stock_test_' + new Date().toISOString().slice(0,10).replace(/-/g, '') + '.csv';
+                link.setAttribute('href', url);
+                link.setAttribute('download', nombreArchivo);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Prueba Excel Exitosa!',
+                    text: 'El archivo CSV se descargó correctamente',
+                    timer: 2000
+                });
+                
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error en Prueba Excel',
+                    text: error.message
+                });
+                throw error;
+            }
+        }
+
+        function exportarJSON() {
+            try {
+                const exportData = {
+                    titulo: 'Reporte de Stock por Categoría - PRUEBA',
+                    fechaGeneracion: new Date().toISOString(),
+                    sistema: 'Sistema de Inventario',
+                    categorias: Object.keys(stockData).map(key => {
+                        const data = stockData[key];
+                        return {
+                            id: key,
+                            nombre: data.nombre,
+                            estadisticas: {
+                                total: data.total,
+                                activos: data.activos,
+                                disponibles: data.disponibles,
+                                mantenimiento: data.mantenimiento,
+                                danados: data.danados
+                            }
+                        };
+                    })
+                };
+                
+                const jsonContent = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([jsonContent], { type: 'application/json' });
+                const link = document.createElement('a');
+                
+                const url = URL.createObjectURL(blob);
+                const nombreArchivo = 'stock_test_' + new Date().toISOString().slice(0,10).replace(/-/g, '') + '.json';
+                link.setAttribute('href', url);
+                link.setAttribute('download', nombreArchivo);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Prueba JSON Exitosa!',
+                    text: 'El archivo JSON se descargó correctamente',
+                    timer: 2000
+                });
+                
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error en Prueba JSON',
+                    text: error.message
+                });
+                throw error;
+            }
+        }
+
+        function imprimirReporte() {
+            try {
+                const ventanaImpresion = window.open('', '_blank', 'width=800,height=600');
+                
+                const fecha = new Date().toLocaleDateString('es-ES');
+                const hora = new Date().toLocaleTimeString('es-ES');
+                
+                let contenidoHTML = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Reporte de Stock - PRUEBA</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; }
+                            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                            .tabla { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                            .tabla th, .tabla td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                            .tabla th { background-color: #343a40; color: white; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>📊 REPORTE DE STOCK - PRUEBA</h1>
+                            <p>Generado el ${fecha} a las ${hora}</p>
+                        </div>
+                        
+                        <table class="tabla">
+                            <thead>
+                                <tr>
+                                    <th>Categoría</th>
+                                    <th>Total</th>
+                                    <th>En Uso</th>
+                                    <th>Disponibles</th>
+                                    <th>Mantenimiento</th>
+                                    <th>Dañados</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                Object.keys(stockData).forEach(key => {
+                    const data = stockData[key];
+                    contenidoHTML += `
+                                <tr>
+                                    <td>${data.nombre}</td>
+                                    <td>${data.total}</td>
+                                    <td>${data.activos}</td>
+                                    <td>${data.disponibles}</td>
+                                    <td>${data.mantenimiento}</td>
+                                    <td>${data.danados}</td>
+                                </tr>
+                    `;
+                });
+                
+                contenidoHTML += `
+                            </tbody>
+                        </table>
+                        
+                        <script>
+                            window.onload = function() {
+                                setTimeout(() => window.print(), 500);
+                            }
+                        </script>
+                    </body>
+                    </html>
+                `;
+                
+                ventanaImpresion.document.write(contenidoHTML);
+                ventanaImpresion.document.close();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Prueba Imprimir Exitosa!',
+                    text: 'Se abrió la ventana de impresión',
+                    timer: 2000
+                });
+                
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error en Prueba Imprimir',
+                    text: error.message
+                });
+                throw error;
+            }
+        }
+    </script>
+</body>
+</html>
